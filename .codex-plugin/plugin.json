@@ -1,0 +1,31 @@
+{
+  "name": "thoughts",
+  "version": "1.0.0",
+  "description": "Selective, durable project memory for coding agents",
+  "author": {
+    "name": "EDM115",
+    "url": "https://github.com/EDM115"
+  },
+  "homepage": "https://github.com/EDM115/thoughts#readme",
+  "repository": "https://github.com/EDM115/thoughts",
+  "license": "MIT",
+  "keywords": ["agent-skills", "codex", "compaction", "memory"],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "THOUGHTS",
+    "shortDescription": "Preserve durable project discoveries",
+    "longDescription": "A selective project scratchpad with lifecycle checks for high-value Codex turns and compaction recovery",
+    "developerName": "EDM115",
+    "category": "Productivity",
+    "capabilities": ["Interactive", "Write"],
+    "websiteURL": "https://github.com/EDM115/thoughts",
+    "brandColor": "#ffb86c",
+    "composerIcon": "./assets/logo.webp",
+    "logo": "./assets/logo.webp",
+    "defaultPrompt": [
+      "Preserve the discoveries worth carrying into a fresh thread",
+      "Initialize durable thoughts for this repository",
+      "Clean up stale project thoughts without rewriting user notes"
+    ]
+  }
+}

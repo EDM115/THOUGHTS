@@ -1,0 +1,81 @@
+{
+  "description": "Selectively checkpoint durable project thoughts around high-value Codex lifecycle events",
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${PLUGIN_ROOT}/hooks/thoughts-hook.mjs\"",
+            "commandWindows": "node \"%PLUGIN_ROOT%\\hooks\\thoughts-hook.mjs\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${PLUGIN_ROOT}/hooks/thoughts-hook.mjs\"",
+            "commandWindows": "node \"%PLUGIN_ROOT%\\hooks\\thoughts-hook.mjs\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${PLUGIN_ROOT}/hooks/thoughts-hook.mjs\"",
+            "commandWindows": "node \"%PLUGIN_ROOT%\\hooks\\thoughts-hook.mjs\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${PLUGIN_ROOT}/hooks/thoughts-hook.mjs\"",
+            "commandWindows": "node \"%PLUGIN_ROOT%\\hooks\\thoughts-hook.mjs\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "matcher": "manual|auto",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${PLUGIN_ROOT}/hooks/thoughts-hook.mjs\"",
+            "commandWindows": "node \"%PLUGIN_ROOT%\\hooks\\thoughts-hook.mjs\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${PLUGIN_ROOT}/hooks/thoughts-hook.mjs\"",
+            "commandWindows": "node \"%PLUGIN_ROOT%\\hooks\\thoughts-hook.mjs\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}
