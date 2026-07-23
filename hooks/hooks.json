@@ -7,7 +7,7 @@
           {
             "type": "command",
             "command": "node \"${PLUGIN_ROOT}/hooks/thoughts-hook.mjs\"",
-            "commandWindows": "node \"%PLUGIN_ROOT%\\hooks\\thoughts-hook.mjs\"",
+            "commandWindows": "cmd.exe /d /s /c call node \"%PLUGIN_ROOT%\\hooks\\thoughts-hook.mjs\"",
             "timeout": 5
           }
         ]
@@ -20,7 +20,7 @@
           {
             "type": "command",
             "command": "node \"${PLUGIN_ROOT}/hooks/thoughts-hook.mjs\"",
-            "commandWindows": "node \"%PLUGIN_ROOT%\\hooks\\thoughts-hook.mjs\"",
+            "commandWindows": "cmd.exe /d /s /c call node \"%PLUGIN_ROOT%\\hooks\\thoughts-hook.mjs\"",
             "timeout": 5
           }
         ]
@@ -33,7 +33,7 @@
           {
             "type": "command",
             "command": "node \"${PLUGIN_ROOT}/hooks/thoughts-hook.mjs\"",
-            "commandWindows": "node \"%PLUGIN_ROOT%\\hooks\\thoughts-hook.mjs\"",
+            "commandWindows": "cmd.exe /d /s /c call node \"%PLUGIN_ROOT%\\hooks\\thoughts-hook.mjs\"",
             "timeout": 5
           }
         ]
@@ -45,7 +45,7 @@
           {
             "type": "command",
             "command": "node \"${PLUGIN_ROOT}/hooks/thoughts-hook.mjs\"",
-            "commandWindows": "node \"%PLUGIN_ROOT%\\hooks\\thoughts-hook.mjs\"",
+            "commandWindows": "cmd.exe /d /s /c call node \"%PLUGIN_ROOT%\\hooks\\thoughts-hook.mjs\"",
             "timeout": 5
           }
         ]
@@ -58,7 +58,7 @@
           {
             "type": "command",
             "command": "node \"${PLUGIN_ROOT}/hooks/thoughts-hook.mjs\"",
-            "commandWindows": "node \"%PLUGIN_ROOT%\\hooks\\thoughts-hook.mjs\"",
+            "commandWindows": "cmd.exe /d /s /c call node \"%PLUGIN_ROOT%\\hooks\\thoughts-hook.mjs\"",
             "timeout": 5
           }
         ]
@@ -71,7 +71,7 @@
           {
             "type": "command",
             "command": "node \"${PLUGIN_ROOT}/hooks/thoughts-hook.mjs\"",
-            "commandWindows": "node \"%PLUGIN_ROOT%\\hooks\\thoughts-hook.mjs\"",
+            "commandWindows": "cmd.exe /d /s /c call node \"%PLUGIN_ROOT%\\hooks\\thoughts-hook.mjs\"",
             "timeout": 5
           }
         ]
