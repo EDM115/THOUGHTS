@@ -56,6 +56,7 @@ codex plugin marketplace add EDM115/thoughts
 codex plugin add thoughts@edm115
 ```
 
+Then open the Codex App -> Settings -> Hooks -> thoughts and click on Trust for each of the 6 hook types.  
 The plugin hooks require Node.js 20 or newer. The standalone skill does not. Node.js from the bundled runtime should be sufficient.
 
 ## Commands
