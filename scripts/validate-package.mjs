@@ -5,7 +5,8 @@ import { fileURLToPath } from "node:url";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const errors = [];
 
-const template = "# THOUGHTS — Things Heard, Observed, Unclear, Guessed, Hacked, Tracked, or Suspected : A living document about non-trivial details\n\nThis document will serve as a scratchpad for things encountered during development.  \nYou will find here notes about undocumented stuff, questions about implementation, random ideas that don't fit quite yet the PLAN, ...  \nDeveloppers and Agents alike can write here freely so knowledge never gets lost. Some things can stay in a conversation, in an LLM inner Chain-of-Thoughts, in reasoning, ... but what if we start a new thread ? Everything gets lost. `THOUGHTS.md` fixes that, by providing a persistent, searchable record of non-trivial details that Agents and Developpers can write into and refer to.  \nInformation already present elsewhere (README, AGENTS, PLAN, PROGRESS, plans folder, docs, code & comments, ...) shouldn't be duplicated here.\n";
+const template =
+  "# THOUGHTS — Things Heard, Observed, Unclear, Guessed, Hacked, Tracked, or Suspected : A living document about non-trivial details\n\nThis document will serve as a scratchpad for things encountered during development.  \nYou will find here notes about undocumented stuff, questions about implementation, random ideas that don't fit quite yet the PLAN, ...  \nDeveloppers and Agents alike can write here freely so knowledge never gets lost. Some things can stay in a conversation, in an LLM inner Chain-of-Thoughts, in reasoning, ... but what if we start a new thread ? Everything gets lost. `THOUGHTS.md` fixes that, by providing a persistent, searchable record of non-trivial details that Agents and Developpers can write into and refer to.  \nInformation already present elsewhere (README, AGENTS, PLAN, PROGRESS, plans folder, docs, code & comments, ...) shouldn't be duplicated here.\n";
 
 function fail(path, message) {
   errors.push(`${path}: ${message}`);
@@ -45,15 +46,29 @@ const manifestPath = ".codex-plugin/plugin.json";
 const manifest = await json(manifestPath);
 if (manifest !== null) {
   if (manifest.name !== "thoughts") fail(manifestPath, "name must be thoughts");
-  if (root.split(/[\\/]/).at(-1)?.toLowerCase() !== "thoughts") fail(manifestPath, "plugin folder must be named thoughts");
-  if (!/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/.test(manifest.version ?? "")) fail(manifestPath, "version must be strict semver");
+  if (root.split(/[\\/]/).at(-1)?.toLowerCase() !== "thoughts")
+    fail(manifestPath, "plugin folder must be named thoughts");
+  if (
+    !/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/.test(
+      manifest.version ?? "",
+    )
+  )
+    fail(manifestPath, "version must be strict semver");
   if (manifest.skills !== "./skills/") fail(manifestPath, "skills must be ./skills/");
-  if (Object.hasOwn(manifest, "hooks")) fail(manifestPath, "hooks must use default discovery, not a manifest field");
+  if (Object.hasOwn(manifest, "hooks"))
+    fail(manifestPath, "hooks must use default discovery, not a manifest field");
   if (manifest.skills === "./skills/") await exists("skills");
 }
 
 const hooks = await json("hooks/hooks.json");
-const requiredEvents = ["UserPromptSubmit", "PostToolUse", "SubagentStart", "Stop", "PreCompact", "SessionStart"];
+const requiredEvents = [
+  "UserPromptSubmit",
+  "PostToolUse",
+  "SubagentStart",
+  "Stop",
+  "PreCompact",
+  "SessionStart",
+];
 if (hooks !== null) {
   for (const event of requiredEvents) {
     const groups = hooks.hooks?.[event];
@@ -63,11 +78,13 @@ if (hooks !== null) {
     }
     for (const group of groups) {
       for (const handler of group.hooks ?? []) {
-        if (handler.type !== "command") fail("hooks/hooks.json", `${event} must use command handlers only`);
+        if (handler.type !== "command")
+          fail("hooks/hooks.json", `${event} must use command handlers only`);
       }
     }
   }
-  if (hooks.hooks?.SessionStart?.[0]?.matcher !== "compact") fail("hooks/hooks.json", "SessionStart must match compact only");
+  if (hooks.hooks?.SessionStart?.[0]?.matcher !== "compact")
+    fail("hooks/hooks.json", "SessionStart must match compact only");
 }
 
 const skillPath = "skills/thoughts/SKILL.md";
@@ -77,25 +94,39 @@ if (skill !== null) {
   if (match === null) {
     fail(skillPath, "missing YAML frontmatter");
   } else {
-    const keys = match[1].split(/\r?\n/).filter(Boolean).map((line) => line.match(/^([A-Za-z0-9_-]+):/)?.[1]).filter(Boolean).sort();
-    if (JSON.stringify(keys) !== JSON.stringify(["description", "name"])) fail(skillPath, "frontmatter may contain only name and description");
+    const keys = match[1]
+      .split(/\r?\n/)
+      .filter(Boolean)
+      .map((line) => line.match(/^([A-Za-z0-9_-]+):/)?.[1])
+      .filter(Boolean)
+      .sort();
+    if (JSON.stringify(keys) !== JSON.stringify(["description", "name"]))
+      fail(skillPath, "frontmatter may contain only name and description");
   }
 }
 
 const openaiYaml = await text("skills/thoughts/agents/openai.yaml");
-if (openaiYaml !== null && !/default_prompt:\s*["'].*\$thoughts/i.test(openaiYaml)) fail("skills/thoughts/agents/openai.yaml", "default_prompt must mention $thoughts");
+if (openaiYaml !== null && !/default_prompt:\s*["'].*\$thoughts/i.test(openaiYaml))
+  fail("skills/thoughts/agents/openai.yaml", "default_prompt must mention $thoughts");
 
 const assetPath = "skills/thoughts/assets/THOUGHTS.md";
 const asset = await text(assetPath);
-if (asset !== null && asset !== template) fail(assetPath, "mandatory opening does not match the exact template bytes");
+if (asset !== null && asset !== template)
+  fail(assetPath, "mandatory opening does not match the exact template bytes");
 
 const readme = await text("README.md");
 if (readme !== null) {
   const requiredSections = ["Installation", "Commands", "Privacy", "Limitations", "License"];
   for (const section of requiredSections) {
-    if (!new RegExp(`^##\\s+${section}\\s*$`, "im").test(readme)) fail("README.md", `missing ${section} section`);
+    if (!new RegExp(`^##\\s+${section}\\s*$`, "im").test(readme))
+      fail("README.md", `missing ${section} section`);
   }
-  for (const phrase of ["npx skills add EDM115/thoughts", "$thoughts cleanup", "PreCompact", "THOUGHTS.md"]) {
+  for (const phrase of [
+    "npx skills add EDM115/thoughts",
+    "$thoughts cleanup",
+    "PreCompact",
+    "THOUGHTS.md",
+  ]) {
     if (!readme.includes(phrase)) fail("README.md", `missing ${phrase}`);
   }
 }

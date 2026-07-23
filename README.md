@@ -18,6 +18,7 @@
 Long agent sessions produce valuable details that rarely belong in polished documentation yet : undocumented constraints, failed approaches, implementation tradeoffs, unresolved risks and the one strange fact that will save an hour tomorrow. Context compaction, a new thread, or a different agent can erase them.  
 Saving every transcript is not the answer. It retains noise, may retain sensitive data and leaves the next agent to rediscover what mattered. `thoughts` maintains a deliberately selective `THOUGHTS.md` : a searchable scratchpad for non-obvious project knowledge that is not already authoritative elsewhere.  
 The project has two layers :
+
 - **Portable agent skill** : decides what deserves to be written, supports explicit maintenance commands and works in agent skills-compatible harnesses
 - **Optional Codex plugin** : watches lifecycle signals and asks the main model to run the skill after high-value turns or after compaction. The hook never writes project thoughts itself
 
@@ -59,11 +60,11 @@ The plugin hooks require Node.js 20 or newer. The standalone skill does not. Nod
 
 ## Commands
 
-| Command             | Behavior                                                                                                          |
-| ------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `$thoughts`         | Same as `append` : run the semantic write gate and write only if something qualifies                              |
-| `$thoughts append`  | Read only the resolved `THOUGHTS.md`, use current context to add or refine the current agent's entry             |
-| `$thoughts init`    | Scan the repository and create a useful initial scratchpad from verified, non-obvious facts                      |
+| Command             | Behavior                                                                                                        |
+| ------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `$thoughts`         | Same as `append` : run the semantic write gate and write only if something qualifies                            |
+| `$thoughts append`  | Read only the resolved `THOUGHTS.md`, use current context to add or refine the current agent's entry            |
+| `$thoughts init`    | Scan the repository and create a useful initial scratchpad from verified, non-obvious facts                     |
 | `$thoughts cleanup` | Rescan, remove obsolete agent facts, merge duplicates and compress wording while protecting user-authored notes |
 
 Explicit invocation forces a check, not a mutation. A clean no-op is a valid result.
@@ -71,6 +72,7 @@ Explicit invocation forces a check, not a mutation. A clean no-op is a valid res
 ## File location and ownership
 
 The skill resolves one canonical location :
+
 1. Reuse the sole existing `THOUGHTS.md` at the repository root or established developer-documentation home
 2. Stop if multiple candidates exist, never merge or choose silently
 3. Otherwise use an established developer-documentation directory such as `docs/`, `documentation/`, or `developer-docs/`
@@ -96,6 +98,7 @@ flowchart LR
 ```
 
 The hook uses deterministic signals to request a check when a prompt explicitly asks for thoughts persistence, large-scope work uses tools, two mutations occur, eight tool calls occur, delegation starts, or compaction recovery is pending. These thresholds do not force a write, the skill's semantic gate remains authoritative.
+
 - **`Stop`** : returns a one-time continuation prompt that behaves like a new user prompt. `stop_hook_active` prevents a continuation loop.
 - **`PreCompact`** : stores a pending boolean and allows compaction to continue. Command hooks cannot call the model here.
 - **`SessionStart(source=compact)`** : injects developer context once after compaction, then clears the marker. A short unrelated prompt still produces no write.
@@ -106,6 +109,7 @@ The behavior follows OpenAI's current [Codex hooks contract](https://learn.chatg
 ## Privacy
 
 Hook state lives under Codex's `PLUGIN_DATA` directory in a file named from a SHA-256 hash of the session ID. It contains only :
+
 - turn ID
 - explicit and large-scope booleans
 - tool and mutation counts

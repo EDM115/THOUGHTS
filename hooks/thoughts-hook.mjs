@@ -3,9 +3,12 @@ import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { pathToFileURL } from "node:url";
 
-const CONTINUATION_REASON = "Use $thoughts append now. Apply its write gate: preserve only durable, non-obvious context that would prevent a bad decision or costly rediscovery in a fresh thread. If nothing qualifies, do not edit THOUGHTS.md and immediately finish the original response.";
-const COMPACTION_CONTEXT = "Use $thoughts append now because Codex just resumed after compaction. Apply its semantic write gate: preserve only durable, non-obvious context that would prevent a bad decision or costly rediscovery in a fresh thread. If the post-compaction request is a short unrelated prompt, or no material work lacks a checkpoint, do not edit THOUGHTS.md and continue the original request.";
-const SUBAGENT_CONTEXT = "You are a subagent and must never edit `THOUGHTS.md`. If this is substantial delegated work and you discover a durable non-obvious constraint, conclusion, gotcha, or unresolved risk, add a concise `Thought candidates` section to your final report. The main orchestrator will independently vet it.";
+const CONTINUATION_REASON =
+  "Use $thoughts append now. Apply its write gate: preserve only durable, non-obvious context that would prevent a bad decision or costly rediscovery in a fresh thread. If nothing qualifies, do not edit THOUGHTS.md and immediately finish the original response.";
+const COMPACTION_CONTEXT =
+  "Use $thoughts append now because Codex just resumed after compaction. Apply its semantic write gate: preserve only durable, non-obvious context that would prevent a bad decision or costly rediscovery in a fresh thread. If the post-compaction request is a short unrelated prompt, or no material work lacks a checkpoint, do not edit THOUGHTS.md and continue the original request.";
+const SUBAGENT_CONTEXT =
+  "You are a subagent and must never edit `THOUGHTS.md`. If this is substantial delegated work and you discover a durable non-obvious constraint, conclusion, gotcha, or unresolved risk, add a concise `Thought candidates` section to your final report. The main orchestrator will independently vet it.";
 
 const STATE_KEYS = [
   "turnId",
@@ -39,7 +42,10 @@ function normalizeState(value) {
     explicit: value.explicit === true,
     largeScope: value.largeScope === true,
     toolCount: Number.isSafeInteger(value.toolCount) && value.toolCount >= 0 ? value.toolCount : 0,
-    mutationCount: Number.isSafeInteger(value.mutationCount) && value.mutationCount >= 0 ? value.mutationCount : 0,
+    mutationCount:
+      Number.isSafeInteger(value.mutationCount) && value.mutationCount >= 0
+        ? value.mutationCount
+        : 0,
     delegated: value.delegated === true,
     thoughtsTouched: value.thoughtsTouched === true,
     compactionPending: value.compactionPending === true,
@@ -79,10 +85,16 @@ export async function writeState(env, sessionId, state) {
 
 export function classifyPrompt(prompt) {
   const text = typeof prompt === "string" ? prompt : "";
-  const explicit = /\$thoughts\b/i.test(text)
-    || /\bthoughts\s+(?:append|init|cleanup)\b/i.test(text)
-    || /\b(?:preserve|save|write|append|update|clean(?:\s+up)?)\b[^\r\n]{0,80}\bTHOUGHTS\.md\b/i.test(text);
-  const largeScope = /\b(?:architecture|architectural|migration|migrate|refactor|investigat(?:e|ion)|multi[- ]step|plan(?:ning|s|ned)?|implement(?:ation|ing)?|security (?:review|audit|scan)|delegate|delegated|subagent|rollout|redesign)\b/i.test(text);
+  const explicit =
+    /\$thoughts\b/i.test(text) ||
+    /\bthoughts\s+(?:append|init|cleanup)\b/i.test(text) ||
+    /\b(?:preserve|save|write|append|update|clean(?:\s+up)?)\b[^\r\n]{0,80}\bTHOUGHTS\.md\b/i.test(
+      text,
+    );
+  const largeScope =
+    /\b(?:architecture|architectural|migration|migrate|refactor|investigat(?:e|ion)|multi[- ]step|plan(?:ning|s|ned)?|implement(?:ation|ing)?|security (?:review|audit|scan)|delegate|delegated|subagent|rollout|redesign)\b/i.test(
+      text,
+    );
   return { explicit, largeScope };
 }
 
@@ -97,7 +109,9 @@ function stringifyInput(input) {
 function isMutation(toolName, serializedInput) {
   if (/^(?:apply_patch|Edit|Write)$/i.test(toolName)) return true;
   if (!/^(?:Bash|shell_command|exec_command)$/i.test(toolName)) return false;
-  return /\b(?:apply_patch|Set-Content|Add-Content|Out-File|New-Item|Remove-Item|Move-Item|Copy-Item|mkdir|touch|rm|mv|cp)\b|(?:^|\s)(?:>>?|2>)(?:\s|$)/i.test(serializedInput);
+  return /\b(?:apply_patch|Set-Content|Add-Content|Out-File|New-Item|Remove-Item|Move-Item|Copy-Item|mkdir|touch|rm|mv|cp)\b|(?:^|\s)(?:>>?|2>)(?:\s|$)/i.test(
+    serializedInput,
+  );
 }
 
 function isDelegation(toolName) {
@@ -105,17 +119,21 @@ function isDelegation(toolName) {
 }
 
 function touchesThoughts(serializedInput) {
-  return /(?:^|[\\/])THOUGHTS\.md\b/i.test(serializedInput) || /"THOUGHTS\.md\b/i.test(serializedInput);
+  return (
+    /(?:^|[\\/])THOUGHTS\.md\b/i.test(serializedInput) || /"THOUGHTS\.md\b/i.test(serializedInput)
+  );
 }
 
 export function shouldContinue(event, state) {
   if (event?.stop_hook_active === true || state.thoughtsTouched) return false;
-  return state.explicit
-    || state.mutationCount >= 2
-    || state.toolCount >= 8
-    || state.delegated
-    || state.compactionPending
-    || (state.largeScope && state.toolCount >= 1);
+  return (
+    state.explicit ||
+    state.mutationCount >= 2 ||
+    state.toolCount >= 8 ||
+    state.delegated ||
+    state.compactionPending ||
+    (state.largeScope && state.toolCount >= 1)
+  );
 }
 
 function contextOutput(hookEventName, additionalContext) {

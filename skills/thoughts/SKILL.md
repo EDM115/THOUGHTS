@@ -11,6 +11,7 @@ Only the main orchestrator may edit `THOUGHTS.md`. If you are a subagent, do not
 ## Resolve the file
 
 Resolve one canonical target per invocation and keep using it :
+
 1. If exactly one `THOUGHTS.md` exists at the repository root or in the established developer-documentation home, use it.
 2. If multiple candidates exist, stop and report the conflict. Never merge or choose silently.
 3. Otherwise, use the established developer-documentation home when repository guidance or existing structure clearly identifies one. Conventional names include `docs/`, `doc/`, `documentation/`, `developer-docs/`, and `dev-docs/`.
@@ -22,9 +23,11 @@ When creating the file, copy `assets/THOUGHTS.md` byte-for-byte as its opening.
 ## Apply the write gate
 
 Write only durable, non-obvious information. Ask :
+
 > Would a capable agent starting a fresh thread make a worse decision or repeat costly work without this item ?
 
 An item can qualify when it captures :
+
 - an explicit save, remember, recap, handoff, or resumption request
 - a non-obvious implementation, debugging, integration, security, migration, performance, or architecture discovery
 - a consequential decision or validated tradeoff
@@ -59,6 +62,7 @@ If no facts pass the gate, create only the mandatory opening and report that no 
 ### cleanup
 
 Scan the repository and verify every proposed change against current evidence. Preserve the mandatory opening exactly.
+
 - Remove or mark obsolete agent-authored facts
 - Merge genuine duplicates and compress verbose or low-information phrasing without combining unrelated facts
 - Preserve still-valid entries written by other agents
