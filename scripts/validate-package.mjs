@@ -96,12 +96,19 @@ if (skill !== null) {
   } else {
     const keys = match[1]
       .split(/\r?\n/)
-      .filter(Boolean)
       .map((line) => line.match(/^([A-Za-z0-9_-]+):/)?.[1])
       .filter(Boolean)
       .sort();
-    if (JSON.stringify(keys) !== JSON.stringify(["description", "name"]))
-      fail(skillPath, "frontmatter may contain only name and description");
+    
+    if (
+      JSON.stringify(keys) !==
+      JSON.stringify(["description", "metadata", "name"])
+    ) {
+      fail(
+        skillPath,
+        "frontmatter may contain only name, description and metadata",
+      );
+    }
   }
 }
 

@@ -1,6 +1,8 @@
 ---
-name: THOUGHTS
-description: Must be used by the main orchestrator to check for durable, non-obvious project knowledge before the final answer on high-value turns, after substantial implementations or delegation, near or after compaction, and whenever the user explicitly asks to preserve, append, initialize, clean up, recap, hand off, or resume project thoughts. Use $thoughts, $thoughts append, $thoughts init, or $thoughts cleanup. Never turn THOUGHTS.md into a per-turn log, and never let ordinary exploration or review subagents edit it. Auto-load only if a THOUGHTS.md file is present.
+name: thoughts
+description: (Auto-load only if a THOUGHTS.md file exists) Must be used by the main orchestrator to check for durable, non-obvious project knowledge before the final answer on high-value turns, after substantial implementations or delegation, near or after compaction, and whenever the user explicitly asks to preserve, append, initialize, clean up, recap, hand off, or resume project thoughts. Use $thoughts, $thoughts append, $thoughts init, or $thoughts cleanup. Never turn THOUGHTS.md into a per-turn log, and never let ordinary exploration or review subagents edit it.
+metadata:
+  author: EDM115
 ---
 
 # Thoughts

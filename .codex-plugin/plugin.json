@@ -1,7 +1,7 @@
 {
   "name": "thoughts",
-  "version": "1.1.0",
-  "description": "Selective, durable project memory for coding agents",
+  "version": "1.1.1",
+  "description": "THOUGHTS preserves the non-obvious project knowledge coding agents would otherwise lose across compaction, new threads, and handoffs. It keeps only what matters, without turning every conversation into a log.",
   "author": {
     "name": "EDM115",
     "url": "https://github.com/EDM115"
@@ -13,8 +13,8 @@
   "skills": "./skills/",
   "interface": {
     "displayName": "THOUGHTS",
-    "shortDescription": "Preserve durable project discoveries",
-    "longDescription": "A selective project scratchpad with lifecycle checks for high-value Codex turns and compaction recovery",
+    "shortDescription": "Keep what context forgets",
+    "longDescription": "THOUGHTS preserves the non-obvious project knowledge coding agents would otherwise lose across compaction, new threads, and handoffs. It keeps only what matters, without turning every conversation into a log.",
     "developerName": "EDM115",
     "category": "Productivity",
     "capabilities": ["Interactive", "Write"],

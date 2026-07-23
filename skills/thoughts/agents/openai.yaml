@@ -1,4 +1,4 @@
 interface:
   display_name: "THOUGHTS"
-  short_description: "Preserve durable project discoveries"
+  short_description: "Keep what context forgets"
   default_prompt: "Use $thoughts to preserve the non-obvious details worth carrying into a fresh thread"
