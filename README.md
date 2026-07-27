@@ -6,7 +6,7 @@
 
 ## Things Heard, Observed, Unclear, Guessed, Hacked, Tracked, or Suspected : A living document about non-trivial details
 
-**Selective project memory for coding agents, durable enough to survive context loss, disciplined enough not to become a log**
+**Keep what context forgets**
 
 [![CI](https://github.com/EDM115/thoughts/actions/workflows/ci.yml/badge.svg)](https://github.com/EDM115/thoughts/actions/workflows/ci.yml)
 [![skills.sh](https://skills.sh/b/EDM115/thoughts)](https://skills.sh/EDM115/thoughts)
