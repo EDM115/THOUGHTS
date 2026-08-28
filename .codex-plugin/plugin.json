@@ -1,7 +1,7 @@
 {
   "name": "thoughts",
-  "version": "1.1.2",
-  "description": "THOUGHTS preserves the non-obvious project knowledge coding agents would otherwise lose across compaction, new threads, and handoffs. It keeps only what matters, without turning every conversation into a log.",
+  "version": "1.2.0",
+  "description": "THOUGHTS preserves the non-obvious project knowledge coding agents would otherwise lose across compaction, new threads and handoffs. It keeps only what matters, without turning every conversation into a log.",
   "author": {
     "name": "EDM115",
     "url": "https://github.com/EDM115"
@@ -14,7 +14,7 @@
   "interface": {
     "displayName": "THOUGHTS",
     "shortDescription": "Keep what context forgets",
-    "longDescription": "THOUGHTS preserves the non-obvious project knowledge coding agents would otherwise lose across compaction, new threads, and handoffs. It keeps only what matters, without turning every conversation into a log.",
+    "longDescription": "THOUGHTS preserves the non-obvious project knowledge coding agents would otherwise lose across compaction, new threads and handoffs. It keeps only what matters, without turning every conversation into a log.",
     "developerName": "EDM115",
     "category": "Productivity",
     "capabilities": ["Interactive", "Write"],

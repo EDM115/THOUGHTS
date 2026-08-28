@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -37,24 +37,74 @@ test("classifies explicit invocations and direct persistence requests without re
   assert.deepEqual(classifyPrompt("Please use $thoughts cleanup"), {
     explicit: true,
     largeScope: false,
+    cleanup: true,
   });
   assert.equal(classifyPrompt("write this to docs/THOUGHTS.md").explicit, true);
   assert.equal(classifyPrompt("thoughts init").explicit, true);
+  assert.equal(classifyPrompt("Please clean up the prose in THOUGHTS.md").cleanup, false);
 });
 
-test("large-scope language needs at least one tool call", () => {
+test("classifies high-signal large-scope language without substring false positives", () => {
+  const prompts = [
+    "Rewrite and modernize the service",
+    "Plan a cross-cutting end-to-end upgrade",
+    "Coordinate a system-wide codebase-wide overhaul",
+    "Complete a repo-wide large-scale replatform",
+    "Handle a multi-file multi-module integration",
+    "Prepare a multi-package multi-service multi-repo deployment",
+    "Debug the release and write a diagnosis roadmap",
+    "Perform performance optimization and security hardening",
+    "Draft the implementation specification",
+  ];
+  for (const prompt of prompts) assert.equal(classifyPrompt(prompt).largeScope, true, prompt);
+  assert.equal(classifyPrompt("The upgrader reports its version").largeScope, false);
+});
+
+test("large-scope language needs at least five tool calls", () => {
   const signal = classifyPrompt("Plan and implement a multi-step architecture migration");
   assert.equal(classifyPrompt("Plan the release across several packages").largeScope, true);
   const state = { ...initialState(), ...signal };
   assert.equal(shouldContinue({}, state), false);
-  assert.equal(shouldContinue({}, { ...state, toolCount: 1 }), true);
+  assert.equal(shouldContinue({}, { ...state, toolCount: 4 }), false);
+  assert.equal(shouldContinue({}, { ...state, toolCount: 5 }), true);
 });
 
-test("mechanical thresholds cover mutations, tool volume, delegation, and trivial turns", () => {
-  assert.equal(shouldContinue({}, { ...initialState(), mutationCount: 2 }), true);
-  assert.equal(shouldContinue({}, { ...initialState(), toolCount: 8 }), true);
+test("mechanical thresholds cover mutations, tool volume, delegation and trivial turns", () => {
+  assert.equal(shouldContinue({}, { ...initialState(), mutationCount: 3 }), false);
+  assert.equal(shouldContinue({}, { ...initialState(), mutationCount: 4 }), true);
+  assert.equal(shouldContinue({}, { ...initialState(), toolCount: 9 }), false);
+  assert.equal(shouldContinue({}, { ...initialState(), toolCount: 10 }), true);
   assert.equal(shouldContinue({}, { ...initialState(), delegated: true }), true);
   assert.equal(shouldContinue({}, initialState()), false);
+});
+
+test("the exact NO_THOUGHTS marker suppresses every Stop trigger without case folding", () => {
+  const event = {
+    last_assistant_message: "Implemented and verified.\n\n[//]: # (<NO_THOUGHTS>)\n\n",
+  };
+  const triggeringStates = [
+    { ...initialState(), explicit: true },
+    { ...initialState(), mutationCount: 4 },
+    { ...initialState(), toolCount: 10 },
+    { ...initialState(), delegated: true },
+    { ...initialState(), compactionPending: true },
+    { ...initialState(), largeScope: true, toolCount: 5 },
+  ];
+  for (const state of triggeringStates) assert.equal(shouldContinue(event, state), false);
+  assert.equal(
+    shouldContinue(
+      { last_assistant_message: "Implemented.\n\n[//]: # (<no_thoughts>)\n\n" },
+      { ...initialState(), explicit: true },
+    ),
+    true,
+  );
+  assert.equal(
+    shouldContinue(
+      { last_assistant_message: "Implemented.\n\n[//]: # (<NO_NOTES>)\n\n" },
+      { ...initialState(), explicit: true },
+    ),
+    true,
+  );
 });
 
 test("a turn persists signals only and Stop requests one semantic check", async (t) => {
@@ -67,10 +117,12 @@ test("a turn persists signals only and Stop requests one semantic check", async 
     transcript_path: "C:/private/transcript.jsonl",
     arbitrary: "SECRET-EVENT-FIELD",
   });
-  await send(env, "PostToolUse", {
-    tool_name: "apply_patch",
-    tool_input: { patch: secretTool },
-  });
+  for (let index = 0; index < 4; index += 1) {
+    await send(env, "PostToolUse", {
+      tool_name: "apply_patch",
+      tool_input: { patch: secretTool, index },
+    });
+  }
   const output = await send(env, "Stop", {
     last_assistant_message: "SECRET-ASSISTANT-MESSAGE",
   });
@@ -85,16 +137,17 @@ test("a turn persists signals only and Stop requests one semantic check", async 
   }
 });
 
-test("two mutations, eight tools, and delegation trigger Stop independently", async (t) => {
+test("four mutations, ten tools and delegation trigger Stop independently", async (t) => {
   const mutationEnv = await fixture(t);
   await send(mutationEnv, "UserPromptSubmit", { prompt: "small change" });
-  await send(mutationEnv, "PostToolUse", { tool_name: "Edit", tool_input: {} });
-  await send(mutationEnv, "PostToolUse", { tool_name: "Write", tool_input: {} });
+  for (let index = 0; index < 4; index += 1) {
+    await send(mutationEnv, "PostToolUse", { tool_name: "Edit", tool_input: { index } });
+  }
   assert.equal((await send(mutationEnv, "Stop")).decision, "block");
 
   const volumeEnv = await fixture(t);
-  await send(volumeEnv, "UserPromptSubmit", { prompt: "investigate" });
-  for (let index = 0; index < 8; index += 1) {
+  await send(volumeEnv, "UserPromptSubmit", { prompt: "small lookup" });
+  for (let index = 0; index < 10; index += 1) {
     await send(volumeEnv, "PostToolUse", { tool_name: "Read", tool_input: { index } });
   }
   assert.equal((await send(volumeEnv, "Stop")).decision, "block");
@@ -105,7 +158,78 @@ test("two mutations, eight tools, and delegation trigger Stop independently", as
   assert.equal((await send(delegateEnv, "Stop")).decision, "block");
 });
 
-test("Stop skips trivial turns, active stop chains, and turns that touched thoughts", async (t) => {
+test("Code Mode outer and nested PostToolUse events share canonical accounting", async (t) => {
+  const env = await fixture(t);
+  await send(env, "UserPromptSubmit", { prompt: "small task" });
+  await send(env, "PostToolUse", {
+    tool_name: "exec",
+    tool_input: "await tools.apply_patch('not executed by this event')",
+  });
+  await send(env, "PostToolUse", { tool_name: "apply_patch", tool_input: { command: "patch" } });
+  await send(env, "PostToolUse", {
+    tool_name: "Bash",
+    tool_input: { command: "Set-Content -LiteralPath output.txt -Value done" },
+  });
+  await send(env, "PostToolUse", { tool_name: "update_plan", tool_input: { plan: [] } });
+  await send(env, "PostToolUse", { tool_name: "Agent", tool_input: { task: "review" } });
+
+  const state = await persisted(env);
+  assert.equal(state.toolCount, 5);
+  assert.equal(state.mutationCount, 2);
+  assert.equal(state.delegated, true);
+});
+
+test("cleanup prunes only recognized immediate plugin state artifacts", async (t) => {
+  const env = await fixture(t);
+  const staleStateA = `${"a".repeat(64)}.json`;
+  const staleStateB = `${"b".repeat(64)}.json`;
+  const stateNamedDirectory = `${"c".repeat(64)}.json`;
+  const orphanTemporary = ".01234567-89ab-cdef-0123-456789abcdef.tmp";
+  const unknownTemporary = ".not-plugin-state.tmp";
+  const nestedDirectory = join(env.PLUGIN_DATA, stateNamedDirectory);
+
+  await writeFile(join(env.PLUGIN_DATA, staleStateA), "{}\n", "utf8");
+  await writeFile(join(env.PLUGIN_DATA, staleStateB), "{}\n", "utf8");
+  await writeFile(join(env.PLUGIN_DATA, orphanTemporary), "partial", "utf8");
+  await writeFile(join(env.PLUGIN_DATA, unknownTemporary), "keep", "utf8");
+  await writeFile(join(env.PLUGIN_DATA, "keep.txt"), "keep", "utf8");
+  await mkdir(nestedDirectory);
+  await writeFile(join(nestedDirectory, staleStateA), "nested", "utf8");
+
+  await send(env, "UserPromptSubmit", { prompt: "$thoughts cleanup" });
+
+  const entries = await readdir(env.PLUGIN_DATA, { withFileTypes: true });
+  const files = entries.filter((entry) => entry.isFile()).map((entry) => entry.name);
+  const directories = entries.filter((entry) => entry.isDirectory()).map((entry) => entry.name);
+  const stateFiles = files.filter((name) => /^[a-f0-9]{64}\.json$/.test(name));
+  assert.equal(stateFiles.length, 1);
+  assert.equal(files.includes(orphanTemporary), false);
+  assert.equal(files.includes(unknownTemporary), true);
+  assert.equal(files.includes("keep.txt"), true);
+  assert.deepEqual(directories, [stateNamedDirectory]);
+  assert.equal(await readFile(join(nestedDirectory, staleStateA), "utf8"), "nested");
+
+  const current = JSON.parse(await readFile(join(env.PLUGIN_DATA, stateFiles[0]), "utf8"));
+  assert.deepEqual(Object.keys(current).sort(), Object.keys(initialState()).sort());
+  assert.equal(current.explicit, true);
+});
+
+test("non-cleanup thoughts commands leave accumulated plugin state untouched", async (t) => {
+  const env = await fixture(t);
+  const staleState = `${"d".repeat(64)}.json`;
+  const orphanTemporary = ".fedcba98-7654-3210-fedc-ba9876543210.tmp";
+  await writeFile(join(env.PLUGIN_DATA, staleState), "{}\n", "utf8");
+  await writeFile(join(env.PLUGIN_DATA, orphanTemporary), "partial", "utf8");
+
+  await send(env, "UserPromptSubmit", { prompt: "$thoughts append" });
+
+  const files = await readdir(env.PLUGIN_DATA);
+  assert.equal(files.includes(staleState), true);
+  assert.equal(files.includes(orphanTemporary), true);
+  assert.equal(files.filter((name) => /^[a-f0-9]{64}\.json$/.test(name)).length, 2);
+});
+
+test("Stop skips trivial turns, active stop chains and turns that touched thoughts", async (t) => {
   const trivialEnv = await fixture(t);
   await send(trivialEnv, "UserPromptSubmit", { prompt: "What is 2 + 2?" });
   assert.deepEqual(await send(trivialEnv, "Stop"), {});

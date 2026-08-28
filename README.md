@@ -4,7 +4,7 @@
 
 # THOUGHTS
 
-## Things Heard, Observed, Unclear, Guessed, Hacked, Tracked, or Suspected : A living document about non-trivial details
+## Things Heard, Observed, Unclear, Guessed, Hacked, Tracked or Suspected : A living document about non-trivial details
 
 **Keep what context forgets**
 
@@ -15,7 +15,7 @@
 
 </div>
 
-Long agent sessions produce valuable details that rarely belong in polished documentation yet : undocumented constraints, failed approaches, implementation tradeoffs, unresolved risks and the one strange fact that will save an hour tomorrow. Context compaction, a new thread, or a different agent can erase them.  
+Long agent sessions produce valuable details that rarely belong in polished documentation yet : undocumented constraints, failed approaches, implementation tradeoffs, unresolved risks and the one strange fact that will save an hour tomorrow. Context compaction, a new thread or a different agent can erase them.  
 Saving every transcript is not the answer. It retains noise, may retain sensitive data and leaves the next agent to rediscover what mattered. `thoughts` maintains a deliberately selective `THOUGHTS.md` : a searchable scratchpad for non-obvious project knowledge that is not already authoritative elsewhere.  
 The project has two layers :
 
@@ -32,7 +32,7 @@ A candidate passes the write gate only when a capable agent starting a fresh thr
 - `PreCompact` command hooks cannot invoke the model. Recovery must set a signal and inject `$thoughts append` through `SessionStart(source=compact)` after compaction.
 ```
 
-Routine actions, status narration, simple answers and facts already present in README, AGENTS, plans, code, comments, tests, or issues stay out.  
+Routine actions, status narration, simple answers and facts already present in README, AGENTS, plans, code, comments, tests or issues stay out.  
 `thoughts` preserves conclusions and useful reasoning artifacts, it does **not** request or store hidden chain-of-thought.
 
 ## Installation
@@ -61,14 +61,23 @@ The plugin hooks require Node.js 20 or newer. The standalone skill does not. Nod
 
 ## Commands
 
-| Command             | Behavior                                                                                                        |
-| ------------------- | --------------------------------------------------------------------------------------------------------------- |
-| `$thoughts`         | Same as `append` : run the semantic write gate and write only if something qualifies                            |
-| `$thoughts append`  | Read only the resolved `THOUGHTS.md`, use current context to add or refine the current agent's entry            |
-| `$thoughts init`    | Scan the repository and create a useful initial scratchpad from verified, non-obvious facts                     |
-| `$thoughts cleanup` | Rescan, remove obsolete agent facts, merge duplicates and compress wording while protecting user-authored notes |
+| Command             | Behavior                                                                                                                          |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `$thoughts`         | Same as `append` : run the semantic write gate and write only if something qualifies                                              |
+| `$thoughts append`  | Read only the resolved `THOUGHTS.md`, use current context to add or refine the current agent's entry                              |
+| `$thoughts init`    | Scan the repository and create a useful initial scratchpad from verified, non-obvious facts                                       |
+| `$thoughts cleanup` | Rescan and compact durable notes while protecting user content; with the Codex plugin, also prune recognized hook state artifacts |
 
 Explicit invocation forces a check, not a mutation. A clean no-op is a valid result.
+
+When no edit is necessary, the main agent may append the exact `[//]: # (<NO_THOUGHTS>)` marker to prevent an unnecessary `Stop` continuation. If the user opts out of thoughts for the conversation, the agent includes it in every final response and does not edit `THOUGHTS.md`. The marker must be on its own line with an empty line before and after it so Markdown keeps it invisible; the hook checks the exact case-sensitive marker but leaves correct placement to the agent.
+
+```md
+Visible final response.
+
+[//]: # "<NO_THOUGHTS>"
+
+```
 
 ## File location and ownership
 
@@ -76,7 +85,7 @@ The skill resolves one canonical location :
 
 1. Reuse the sole existing `THOUGHTS.md` at the repository root or established developer-documentation home
 2. Stop if multiple candidates exist, never merge or choose silently
-3. Otherwise use an established developer-documentation directory such as `docs/`, `documentation/`, or `developer-docs/`
+3. Otherwise use an established developer-documentation directory such as `docs/`, `documentation/` or `developer-docs/`
 4. Fall back to the repository root, never create `docs/` solely for this file
 
 During ordinary work, only the main orchestrator edits the file. Exploration and review subagents never write it. A subagent owning substantial delegated work may return a concise `Thought candidates` section for the parent to vet.  
@@ -91,18 +100,20 @@ flowchart LR
     B -- "No" --> C["Finish normally"]
     B -- "Yes" --> D["Stop continuation : $thoughts append"]
     D --> E{"Semantic write gate"}
-    E -- "Nothing durable" --> C
+    E -- "Nothing durable" --> J["Optional hidden NO_THOUGHTS marker"]
+    J --> C
     E -- "Useful in a fresh thread" --> F["Main agent updates THOUGHTS.md"]
     G["PreCompact"] --> H["Store pending boolean only"]
     H --> I["SessionStart : compact"]
     I --> E
 ```
 
-The hook uses deterministic signals to request a check when a prompt explicitly asks for thoughts persistence, large-scope work uses tools, two mutations occur, eight tool calls occur, delegation starts, or compaction recovery is pending. These thresholds do not force a write, the skill's semantic gate remains authoritative.
+The hook uses deterministic signals to request a check when a prompt explicitly asks for thoughts persistence, four mutations occur, ten supported tool events occur, large-scope work reaches five supported tool events, delegation starts or compaction recovery is pending. These thresholds do not force a write, the skill's semantic gate remains authoritative.
 
-- **`Stop`** : returns a one-time continuation prompt that behaves like a new user prompt. `stop_hook_active` prevents a continuation loop.
+- **`PostToolUse`** : uses a `*` matcher and counts canonical supported tool events. Tools called from Code Mode JavaScript arrive through the same nested hook path, so the plugin counts their real events rather than parsing the outer code.
+- **`Stop`** : returns a one-time continuation prompt that behaves like a new user prompt. `stop_hook_active`, an existing thoughts edit or the exact `[//]: # (<NO_THOUGHTS>)` marker suppresses continuation.
 - **`PreCompact`** : stores a pending boolean and allows compaction to continue. Command hooks cannot call the model here.
-- **`SessionStart(source=compact)`** : injects developer context once after compaction, then clears the marker. A short unrelated prompt still produces no write.
+- **`SessionStart(source=compact)`** : injects developer context once after compaction, then clears the marker. Codex delivers this context to the immediate continuation after automatic mid-turn compaction; a short unrelated prompt still produces no write.
 - **`SubagentStart`** : tells subagents not to edit `THOUGHTS.md` and allows candidate reporting for substantial work.
 
 The behavior follows OpenAI's current [Codex hooks contract](https://learn.chatgpt.com/docs/hooks).
@@ -118,14 +129,16 @@ Hook state lives under Codex's `PLUGIN_DATA` directory in a file named from a SH
 - a compaction-pending boolean
 
 Prompts, assistant messages, tool inputs and outputs, source paths, transcripts, source code and `THOUGHTS.md` contents are never persisted. Corrupt or unavailable state fails open so Codex can continue. Writes use a temporary sibling file followed by rename to avoid partial JSON.  
+`$thoughts cleanup` removes only immediate plugin-owned files matching the hashed session-state or orphan temporary-file shapes, then recreates the current session state. Unknown files and every directory are preserved. The standalone skill has no `PLUGIN_DATA` side effect.  
 Plugin-bundled command hooks are executable code. Codex therefore requires users to review and trust the exact hook definition before it runs and changed hooks require review again.
 
 ## Limitations
 
 - Implicit skill selection is model-controlled. Explicit `$thoughts` invocation is the portable reliable path, the Codex plugin adds lifecycle enforcement where hooks are supported.
-- `PreCompact` cannot send a model prompt. It can only run deterministic code, stop compaction, or set state, this plugin deliberately recovers after compaction instead of blocking it.
+- `PreCompact` cannot send a model prompt. Its current output can stop compaction or surface a UI warning, but cannot add model context, so this plugin deliberately recovers through `SessionStart(source=compact)` instead of blocking compaction.
 - Mechanical thresholds are heuristics. They may request a semantic check after work that ultimately produces no entry.
-- Tool hooks cover supported local function-tool paths, not every possible hosted or specialized tool.
+- Code Mode nested calls use normal supported tool hooks, but hosted tools and specialized paths that opt out of the local function-tool hook path remain unobservable.
+- The hidden marker depends on the agent placing it between empty lines. The hook recognizes the exact token and does not validate Markdown rendering.
 - Conversation titles, model names and reasoning levels depend on what the harness exposes, the skill never invents missing metadata.
 - Lifecycle automation is Codex-specific. The standalone skill remains usable elsewhere.
 
@@ -138,7 +151,7 @@ pnpm test
 pnpm validate
 ```
 
-CI runs both commands on Node.js 20 and 22. Tests cover classification, thresholds, trivial-turn skipping, thoughts-touch suppression, stop-loop prevention, compaction recovery, state corruption, privacy, subagent context, the command entrypoint and package structure.  
+CI runs both commands on Node.js 20 and 22. Tests cover expanded classification, threshold boundaries, hidden-marker suppression, Code Mode nested event accounting, selective plugin-state cleanup, trivial-turn skipping, thoughts-touch suppression, stop-loop prevention, compaction recovery, state corruption, privacy, subagent context, the command entrypoint and package structure.  
 Focused bug reports and pull requests are welcome. Please keep new persistence behavior selective and include regression coverage.
 
 ## License
