@@ -60,6 +60,49 @@ test("classifies high-signal large-scope language without substring false positi
   assert.equal(classifyPrompt("The upgrader reports its version").largeScope, false);
 });
 
+test("cleanup requires a whole command request, not discussion or quoted instructions", async (t) => {
+  const env = await fixture(t);
+  const retained = [`${"e".repeat(64)}.json`, ".01234567-89ab-cdef-0123-456789abcdef.tmp"];
+  for (const name of retained) await writeFile(join(env.PLUGIN_DATA, name), "keep", "utf8");
+  for (const prompt of [
+    'Explain what "$thoughts cleanup" does; do not run it.',
+    "Do not run $thoughts cleanup",
+    "```\n$thoughts cleanup\n```",
+    "Review the implementation of thoughts cleanup",
+  ]) {
+    assert.equal(classifyPrompt(prompt).cleanup, false, prompt);
+    await send(env, "UserPromptSubmit", { prompt });
+    for (const name of retained) assert.equal(await readFile(join(env.PLUGIN_DATA, name), "utf8"), "keep");
+  }
+  for (const prompt of ["$thoughts cleanup", "thoughts cleanup", "Please use $thoughts cleanup.", "run $thoughts cleanup!"]) {
+    assert.equal(classifyPrompt(prompt).cleanup, true, prompt);
+  }
+});
+
+test("only targeted writes count as a thoughts checkpoint", async (t) => {
+  const env = await fixture(t);
+  await send(env, "UserPromptSubmit", { prompt: "$thoughts append" });
+  const observations = [
+    { tool_name: "Read", tool_input: { file_path: "docs/THOUGHTS.md" } },
+    { tool_name: "exec", tool_input: "await tools.apply_patch('*** Update File: THOUGHTS.md')" },
+    { tool_name: "exec_command", tool_input: { cmd: "Get-Content THOUGHTS.md" } },
+    { tool_name: "Write", tool_input: { file_path: "THOUGHTS.md.bak" } },
+    { tool_name: "Edit", tool_input: { file_path: "README.md", new_string: "Read THOUGHTS.md" } },
+    { tool_name: "apply_patch", tool_input: "*** Begin Patch\n*** Update File: README.md\n@@\n+Read THOUGHTS.md\n*** End Patch" },
+    { tool_name: "apply_patch", tool_input: "*** Begin Patch\n*** Delete File: THOUGHTS.md\n*** End Patch" },
+  ];
+  for (const observation of observations) {
+    await send(env, "PostToolUse", observation);
+    assert.equal((await readState(env, SESSION)).thoughtsTouched, false, observation.tool_name);
+  }
+  assert.equal((await send(env, "Stop")).decision, "block");
+  await send(env, "PreCompact");
+  assert.match((await send(env, "SessionStart", { source: "compact" })).hookSpecificOutput.additionalContext, /\$thoughts append/);
+  await send(env, "PostToolUse", { tool_name: "apply_patch", tool_input: "*** Begin Patch\n*** Update File: docs/THOUGHTS.md\n@@\n+Durable fact\n*** End Patch" });
+  assert.equal((await readState(env, SESSION)).thoughtsTouched, true);
+  assert.deepEqual(await send(env, "Stop"), {});
+});
+
 test("large-scope language needs at least five tool calls", () => {
   const signal = classifyPrompt("Plan and implement a multi-step architecture migration");
   assert.equal(classifyPrompt("Plan the release across several packages").largeScope, true);
@@ -242,7 +285,7 @@ test("Stop skips trivial turns, active stop chains and turns that touched though
   await send(touchedEnv, "UserPromptSubmit", { prompt: "large refactor" });
   await send(touchedEnv, "PostToolUse", {
     tool_name: "apply_patch",
-    tool_input: { path: "docs\\THOUGHTS.md" },
+    tool_input: { patch: "*** Begin Patch\n*** Update File: docs\\THOUGHTS.md\n@@\n+Durable fact\n*** End Patch" },
   });
   assert.deepEqual(await send(touchedEnv, "Stop"), {});
 });

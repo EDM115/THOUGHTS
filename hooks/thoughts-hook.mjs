@@ -105,7 +105,8 @@ async function cleanupPluginData(env) {
 
 export function classifyPrompt(prompt) {
   const text = typeof prompt === "string" ? prompt : "";
-  const cleanup = /(?:^|[^\w])\$?thoughts\s+cleanup\b/i.test(text);
+  // State pruning has side effects: require a whole command, not a mention in prose or a code fence.
+  const cleanup = /^(?:please\s+)?(?:(?:use|run)\s+)?\$?thoughts\s+cleanup[.!]?$/i.test(text.trim());
   const explicit =
     /\$thoughts\b/i.test(text) ||
     /\bthoughts\s+(?:append|init|cleanup)\b/i.test(text) ||
@@ -139,10 +140,16 @@ function isDelegation(toolName) {
   return /^(?:Agent|spawn_agent)$/i.test(toolName);
 }
 
-function touchesThoughts(serializedInput) {
-  return (
-    /(?:^|[\\/])THOUGHTS\.md\b/i.test(serializedInput) || /"THOUGHTS\.md\b/i.test(serializedInput)
-  );
+function writesThoughts(toolName, input) {
+  const isThoughtsPath = (path) => typeof path === "string" && /(?:^|[\\/])THOUGHTS\.md$/i.test(path.trim());
+  if (/^(?:Edit|Write)$/i.test(toolName)) {
+    return isThoughtsPath(input?.file_path ?? input?.path);
+  }
+  if (toolName !== "apply_patch") return false;
+  const patch = typeof input === "string" ? input : input?.patch ?? input?.command;
+  if (typeof patch !== "string") return false;
+  // Body text, reads, shell commands, and outer Code Mode source are not checkpoint evidence.
+  return [...patch.matchAll(/^\*\*\* (?:Add|Update) File: (.+)\r?$/gm)].some((match) => isThoughtsPath(match[1]));
 }
 
 export function shouldContinue(event, state) {
@@ -204,7 +211,7 @@ export async function handleEvent(event, env = process.env) {
       state.toolCount += 1;
       if (isMutation(toolName, serializedInput)) state.mutationCount += 1;
       if (isDelegation(toolName)) state.delegated = true;
-      if (touchesThoughts(serializedInput)) state.thoughtsTouched = true;
+      if (writesThoughts(toolName, event.tool_input)) state.thoughtsTouched = true;
       await writeState(env, sessionId, state);
       return {};
     }
